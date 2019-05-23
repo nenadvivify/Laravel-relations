@@ -34,15 +34,24 @@ class CommentController extends Controller
             'id' => 'required'
         ]);
 
-        $comment = new Comment(['body' => request()->body]);
+        $comment = new Comment([
+            'body' => request()->body,
+            'commentable_id' => request()->id,
+            'commentable_type' => request()->type
+        ]);
+
+        if (!request()->parentId) {
+            $comment->saveAsRoot();
+        } else {
+            $parent = Comment::find(request()->parentId);
+            $comment->parent()->associate($parent)->save();
+        }
 
         if (request()->type == 'post') {
             $post = Post::find(request()->id);
-            $post->comments()->save($comment);
             return $post->load('comments');
         } elseif (request()->type == 'movie') {
             $movie = Movie::find(request()->id);
-            $movie->comments()->save($comment);
             return $movie->load('comments');
         }
     }
@@ -55,7 +64,7 @@ class CommentController extends Controller
      */
     public function show($id)
     {
-        //
+        return Comment::descendantsAndSelf($id)->toTree();
     }
 
     /**
